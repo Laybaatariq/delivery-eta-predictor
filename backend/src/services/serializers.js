@@ -32,6 +32,8 @@ export function serializeListItem(o) {
     id: '#' + o.orderRef,
     orderRef: o.orderRef,
     area: o.area,
+    rider: o.riderName,
+    load: o.riderOpenOrders,
     prob: o.riskPercent,
     level: levelFor(o.riskPercent),
     promised: minutesOfDay(o.promisedAt),
