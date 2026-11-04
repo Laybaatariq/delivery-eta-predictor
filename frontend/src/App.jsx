@@ -1,122 +1,120 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useEffect, useState } from 'react';
+import {
+  getBoard,
+  getOrder,
+  pressAction,
+  refreshPrediction,
+  reassignRider,
+  createOrder,
+} from './api';
+import Header from './components/Header';
+import OrderList from './components/OrderList';
+import RouteMap from './components/RouteMap';
+import OrderDetail from './components/OrderDetail';
+import NewOrderForm from './components/NewOrderForm';
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const [board, setBoard] = useState(null);
+  const [selectedRef, setSelectedRef] = useState(null);
+  const [detail, setDetail] = useState(null);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+
+  useEffect(() => {
+    getBoard()
+      .then((b) => {
+        setBoard(b);
+        setSelectedRef(b.orders[0]?.orderRef ?? null);
+      })
+      .catch((e) => setError(e.message));
+  }, []);
+
+  useEffect(() => {
+    if (!selectedRef) return;
+    setDetail(null);
+    getOrder(selectedRef).then(setDetail).catch((e) => setError(e.message));
+  }, [selectedRef]);
+
+  async function run(task) {
+    setBusy(true);
+    setError('');
+    try {
+      await task();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const handleAction = (index) =>
+    run(async () => setDetail(await pressAction(selectedRef, index)));
+
+  const handleRefresh = () =>
+    run(async () => {
+      setDetail(await refreshPrediction(selectedRef));
+      setBoard(await getBoard());
+    });
+
+  const handleReassign = (riderName) =>
+    run(async () => {
+      setDetail(await reassignRider(selectedRef, riderName));
+      setBoard(await getBoard());
+    });
+
+  const handleCreate = (payload) =>
+    run(async () => {
+      const created = await createOrder(payload);
+      setBoard(await getBoard());
+      setShowNew(false);
+      setSelectedRef(created.orderRef);
+    });
+
+  if (!board) {
+    return error ? (
+      <p className="error">Error: {error}. Kya backend chal raha hai (port 5000)?</p>
+    ) : (
+      <p className="loading">Loading dispatch board...</p>
+    );
+  }
+
+  // Dropdown ke liye unique rider names
+  const riders = [...new Set(board.orders.map((o) => o.rider))].sort();
 
   return (
     <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
+      <Header board={board} />
+
+      <div className="toolbar">
+        <button className="btn" onClick={() => setShowNew((v) => !v)}>
+          {showNew ? 'Cancel' : '+ New order'}
         </button>
-      </section>
+      </div>
 
-      <div className="ticks"></div>
+      {showNew && <NewOrderForm onCreate={handleCreate} busy={busy} />}
+      {error && <p className="banner">{error}</p>}
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
+      <main className="grid">
+        <OrderList
+          orders={board.orders}
+          selectedRef={selectedRef}
+          onSelect={setSelectedRef}
+        />
+        <RouteMap
+          board={board}
+          selectedRef={selectedRef}
+          onSelect={setSelectedRef}
+        />
+        <OrderDetail
+          detail={detail}
+          busy={busy}
+          riders={riders}
+          onAction={handleAction}
+          onRefresh={handleRefresh}
+          onReassign={handleReassign}
+        />
+      </main>
     </>
-  )
+  );
 }
-
-export default App
