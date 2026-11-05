@@ -4,7 +4,7 @@ import { answerQuestion } from '../services/assistant.js';
 
 const router = Router();
 
-// POST /api/assistant/ask  { question, selectedRef }
+// POST /api/assistant/ask   { question, selectedRef }
 router.post('/ask', async (req, res, next) => {
   try {
     const { question = '', selectedRef } = req.body;

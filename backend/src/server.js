@@ -8,6 +8,8 @@ import dashboardRouter from './routes/dashboard.js';
 import ordersRouter from './routes/orders.js';
 import predictionsRouter from './routes/predictions.js';
 import assistantRouter from './routes/assistant.js';
+import weatherRouter from './routes/weather.js';
+import roadRoutesRouter from './routes/roadRoutes.js';
 
 const app = express();
 
@@ -21,6 +23,8 @@ app.use('/api/dashboard', dashboardRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/predictions', predictionsRouter);
 app.use('/api/assistant', assistantRouter);
+app.use('/api/weather', weatherRouter);
+app.use('/api/routes', roadRoutesRouter);
 
 app.use((req, res) => res.status(404).json({ error: 'Route not found' }));
 

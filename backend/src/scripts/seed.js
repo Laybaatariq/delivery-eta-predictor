@@ -8,7 +8,7 @@ import { seedOrders, seedSnapshot } from '../data/seedData.js';
 async function main() {
   await connectDB(process.env.MONGO_URI);
 
-  // Development only: this wipes existing orders and snapshots
+  // Development only: existing orders aur snapshots delete hote hain
   await Order.deleteMany({});
   await DispatchSnapshot.deleteMany({});
 

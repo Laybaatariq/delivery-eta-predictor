@@ -2,9 +2,9 @@ import mongoose from 'mongoose';
 
 const snapshotSchema = new mongoose.Schema(
   {
-    asOfLabel: String,        // "5:42 PM"
-    onTimePct: Number,        // 87
-    avgEtaErrorMin: Number,   // 26
+    asOfLabel: String,
+    onTimePct: Number,
+    avgEtaErrorMin: Number,
     weather: String,
   },
   { timestamps: true }

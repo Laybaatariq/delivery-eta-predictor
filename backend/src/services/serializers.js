@@ -1,14 +1,13 @@
-import { BOARD } from '../config/board.js';
+import { pinFor } from '../config/areas.js';
 
-const KARACHI_TZ = 'Asia/Karachi';
 const timeParts = new Intl.DateTimeFormat('en-GB', {
-  timeZone: KARACHI_TZ,
+  timeZone: 'Asia/Karachi',
   hour: '2-digit',
   minute: '2-digit',
   hour12: false,
 });
 
-// Date -> minutes since midnight in Karachi time
+// Date -> Karachi time ke minutes (1140 = 7:00 PM)
 export function minutesOfDay(date) {
   if (!date) return null;
   const parts = timeParts.formatToParts(date);
@@ -17,7 +16,6 @@ export function minutesOfDay(date) {
   return h * 60 + m;
 }
 
-// Same thresholds as the prototype and the ML service
 export function levelFor(riskPercent) {
   return riskPercent >= 60 ? 'high' : riskPercent >= 35 ? 'med' : 'low';
 }
@@ -26,8 +24,8 @@ export function formatPKR(amount) {
   return 'Rs ' + amount.toLocaleString('en-US');
 }
 
-// Shape used on the left-side order list and on the map
 export function serializeListItem(o) {
+  const pin = pinFor(o.orderRef, o.area);
   return {
     id: '#' + o.orderRef,
     orderRef: o.orderRef,
@@ -37,21 +35,18 @@ export function serializeListItem(o) {
     prob: o.riskPercent,
     level: levelFor(o.riskPercent),
     promised: minutesOfDay(o.promisedAt),
-    x: o.mapPos.x,
-    y: o.mapPos.y,
+    lat: pin.lat,
+    lng: pin.lng,
     prog: o.riderProgress,
   };
 }
 
-// Shape used on the right-side detail panel
 export function serializeDetail(o) {
   return {
     ...serializeListItem(o),
     lo: minutesOfDay(o.eta?.low),
     mid: minutesOfDay(o.eta?.mid),
     hi: minutesOfDay(o.eta?.high),
-    rider: o.riderName,
-    load: o.riderOpenOrders,
     amount: formatPKR(o.amountPKR),
     reasons: o.reasons.map((r) => [r.label, r.impact]),
     why: o.explanation?.why ?? '',

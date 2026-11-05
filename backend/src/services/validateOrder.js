@@ -4,7 +4,7 @@ const AREA_NAMES = AREAS.map((a) => a.name);
 const REF_PATTERN = /^[A-Za-z0-9-]{3,20}$/;
 const MAX_DISTANCE_KM = 50;
 const MAX_AMOUNT_PKR = 1_000_000;
-const PAST_TOLERANCE_MS = 2 * 60 * 60 * 1000; // 2 ghante tak purana time allowed
+const PAST_TOLERANCE_MS = 2 * 60 * 60 * 1000;
 
 // Returns { value } on success or { error } on failure
 export function validateNewOrder(body = {}) {
@@ -22,6 +22,11 @@ export function validateNewOrder(body = {}) {
     return { error: `Distance 0 se zyada aur ${MAX_DISTANCE_KM} km se kam honi chahiye` };
   }
 
+  const weightKg = body.weightKg === undefined ? 1 : Number(body.weightKg);
+  if (!(weightKg >= 0 && weightKg <= 100)) {
+    return { error: 'Weight 0 se 100 kg ke beech honi chahiye' };
+  }
+
   const amountPKR = Number(body.amountPKR);
   if (!(amountPKR > 0 && amountPKR <= MAX_AMOUNT_PKR)) {
     return { error: `Amount 0 se zyada aur ${MAX_AMOUNT_PKR} se kam hona chahiye` };
@@ -29,11 +34,6 @@ export function validateNewOrder(body = {}) {
 
   if (!['COD', 'PREPAID'].includes(body.paymentType)) {
     return { error: 'Payment type COD ya PREPAID hona chahiye' };
-  }
-
-  const riderName = String(body.riderName ?? '').trim();
-  if (riderName.length < 2 || riderName.length > 50) {
-    return { error: 'Rider name 2 se 50 characters ka hona chahiye' };
   }
 
   const promisedAt = new Date(body.promisedAt);
@@ -49,9 +49,9 @@ export function validateNewOrder(body = {}) {
       orderRef,
       area: body.area,
       distanceKm,
+      weightKg,
       amountPKR,
       paymentType: body.paymentType,
-      riderName,
       promisedAt,
     },
   };

@@ -5,7 +5,6 @@ const client = axios.create({
   timeout: 5000,
 });
 
-// Sends order features to the FastAPI service and returns ETA + risk.
 export async function predictForOrder(order) {
   const now = new Date();
   const payload = {

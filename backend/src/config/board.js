@@ -1,4 +1,4 @@
 export const BOARD = {
-  hub: { x: 300, y: 220, name: 'Central hub' },
+  hub: { lat: 24.8607, lng: 67.0011, name: 'Central hub' },
   canvas: { width: 600, height: 420 },
 };

@@ -1,18 +1,14 @@
 import { Router } from 'express';
 import { Order } from '../models/Order.js';
 import { serializeDetail } from '../services/serializers.js';
-import { BOARD } from '../config/board.js';
+import { validateNewOrder } from '../services/validateOrder.js';
+import { ingestOrder, syncRiderLoad } from '../services/ingestOrder.js';
+import { randomIncomingOrder } from '../services/orderGenerator.js';
+import { RIDERS } from '../config/riders.js';
 
 const router = Router();
 
-// Accepts "PK-4821" or "#PK-4821"
 const cleanRef = (ref) => ref.replace(/^#/, '');
-
-// Naye order ko map par random jagah dete hain, board ke andar
-const randomMapPos = () => ({
-  x: 200 + Math.round(Math.random() * 320),
-  y: 80 + Math.round(Math.random() * 260),
-});
 
 // GET /api/orders/:ref
 router.get('/:ref', async (req, res, next) => {
@@ -48,44 +44,55 @@ router.post('/:ref/actions/:index', async (req, res, next) => {
 // POST /api/orders/:ref/reassign   body: { riderName }
 router.post('/:ref/reassign', async (req, res, next) => {
   try {
-    const riderName = (req.body.riderName || '').trim();
-    if (!riderName) return res.status(400).json({ error: 'riderName is required' });
+    const riderName = String(req.body.riderName ?? '').trim();
+    if (!RIDERS.includes(riderName)) {
+      return res.status(400).json({ error: 'Rider list mein nahi hai' });
+    }
 
     const order = await Order.findOne({ orderRef: cleanRef(req.params.ref) });
     if (!order) return res.status(404).json({ error: 'Order not found' });
 
+    const previous = order.riderName;
     order.riderName = riderName;
     await order.save();
-    res.json(serializeDetail(order));
+
+    await syncRiderLoad(previous);
+    await syncRiderLoad(riderName);
+
+    res.json(serializeDetail(await Order.findById(order._id)));
   } catch (err) {
     next(err);
   }
 });
 
-// POST /api/orders   body: { orderRef, area, distanceKm, paymentType, amountPKR, riderName, promisedAt }
+// POST /api/orders   (external system ke liye ingestion)
 router.post('/', async (req, res, next) => {
   try {
-    const { orderRef, area, distanceKm, paymentType, amountPKR, riderName, promisedAt } = req.body;
+    const { value, error } = validateNewOrder(req.body);
+    if (error) return res.status(400).json({ error });
 
-    const exists = await Order.exists({ orderRef });
-    if (exists) return res.status(409).json({ error: `Order ${orderRef} already exists` });
+    if (await Order.exists({ orderRef: value.orderRef })) {
+      return res.status(409).json({ error: `Order ${value.orderRef} already exists` });
+    }
 
-    const order = await Order.create({
-      orderRef,
-      area,
-      city: 'Karachi',
-      distanceKm,
-      paymentType,
-      amountPKR,
-      riderName,
-      promisedAt,
-      riderOpenOrders: 0,
-      mapPos: randomMapPos(),
-      riderProgress: 0,
-      status: 'DISPATCHED',
-      riskPercent: 0,
-    });
+    const order = await ingestOrder(value);
+    res.status(201).json(serializeDetail(order));
+  } catch (err) {
+    next(err);
+  }
+});
 
+// POST /api/orders/simulate   (dashboard button, koi input nahi)
+router.post('/simulate', async (req, res, next) => {
+  try {
+    const { value, error } = validateNewOrder(randomIncomingOrder());
+    if (error) return res.status(500).json({ error: `Simulator ne invalid order banaya: ${error}` });
+
+    if (await Order.exists({ orderRef: value.orderRef })) {
+      return res.status(409).json({ error: 'Duplicate simulated ref, dobara try karo' });
+    }
+
+    const order = await ingestOrder(value);
     res.status(201).json(serializeDetail(order));
   } catch (err) {
     next(err);

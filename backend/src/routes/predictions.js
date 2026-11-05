@@ -7,7 +7,7 @@ const router = Router();
 
 const addMinutes = (date, min) => new Date(date.getTime() + min * 60000);
 
-// POST /api/predictions/:ref  -> runs the model and updates the order
+// POST /api/predictions/:ref
 router.post('/:ref', async (req, res, next) => {
   try {
     const order = await Order.findOne({ orderRef: req.params.ref.replace(/^#/, '') });

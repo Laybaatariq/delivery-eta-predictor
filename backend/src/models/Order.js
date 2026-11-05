@@ -2,7 +2,6 @@ import mongoose from 'mongoose';
 
 const { Schema } = mongoose;
 
-// One driver of the risk: label + impact (positive = pushes toward late)
 const reasonSchema = new Schema(
   {
     label: { type: String, required: true },
@@ -11,7 +10,6 @@ const reasonSchema = new Schema(
   { _id: false }
 );
 
-// A button the dispatcher can press, e.g. "Notify customer"
 const actionSchema = new Schema(
   {
     label: { type: String, required: true },
@@ -23,19 +21,18 @@ const actionSchema = new Schema(
 
 const orderSchema = new Schema(
   {
-    orderRef: { type: String, required: true, unique: true, index: true }, // "PK-4821", shown as "#PK-4821"
+    orderRef: { type: String, required: true, unique: true, index: true, trim: true, maxlength: 20 },
     area: { type: String, required: true },
     city: { type: String, default: 'Karachi' },
 
-    distanceKm: { type: Number, required: true },
-    weightKg: { type: Number, default: 1 },
+    distanceKm: { type: Number, required: true, min: 0, max: 50 },
+    weightKg: { type: Number, default: 1, min: 0 },
     paymentType: { type: String, enum: ['COD', 'PREPAID'], default: 'COD' },
-    amountPKR: { type: Number, required: true },
+    amountPKR: { type: Number, required: true, min: 0, max: 1000000 },
 
-    riderName: { type: String, required: true },
-    riderOpenOrders: { type: Number, default: 0 },
+    riderName: { type: String, required: true, trim: true, minlength: 2, maxlength: 50 },
+    riderOpenOrders: { type: Number, default: 0, min: 0 },
 
-    // Map position on the 600x420 board and rider progress along the route (0 to 1)
     mapPos: { x: Number, y: Number },
     riderProgress: { type: Number, min: 0, max: 1, default: 0 },
 
@@ -46,7 +43,6 @@ const orderSchema = new Schema(
     },
     promisedAt: { type: Date, required: true },
 
-    // Predicted arrival range from the ML service
     eta: { low: Date, mid: Date, high: Date },
     riskPercent: { type: Number, min: 0, max: 100, default: 0, index: true },
     modelVersion: String,
@@ -59,7 +55,7 @@ const orderSchema = new Schema(
     },
     actions: [actionSchema],
 
-    deliveredAt: Date, // ground truth for training
+    deliveredAt: Date,
   },
   { timestamps: true }
 );
