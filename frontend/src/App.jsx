@@ -2,24 +2,28 @@ import { useEffect, useState } from 'react';
 import {
   getBoard,
   getOrder,
+  getRoute,
+  getWeather,
   pressAction,
   refreshPrediction,
   reassignRider,
-  createOrder,
+  simulateOrder,
 } from './api';
 import Header from './components/Header';
 import OrderList from './components/OrderList';
 import RouteMap from './components/RouteMap';
 import OrderDetail from './components/OrderDetail';
-import NewOrderForm from './components/NewOrderForm';
+
+const WEATHER_REFRESH_MS = 10 * 60 * 1000;
 
 export default function App() {
   const [board, setBoard] = useState(null);
+  const [weather, setWeather] = useState([]);
   const [selectedRef, setSelectedRef] = useState(null);
   const [detail, setDetail] = useState(null);
+  const [route, setRoute] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [showNew, setShowNew] = useState(false);
 
   useEffect(() => {
     getBoard()
@@ -31,9 +35,31 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const load = () => getWeather().then((r) => setWeather(r.areas)).catch(() => {});
+    load();
+    const id = setInterval(load, WEATHER_REFRESH_MS);
+    return () => clearInterval(id);
+  }, []);
+
+  // Order badalne par purane response ignore hon
+  useEffect(() => {
     if (!selectedRef) return;
+    let active = true;
     setDetail(null);
-    getOrder(selectedRef).then(setDetail).catch((e) => setError(e.message));
+    setRoute(null);
+
+    getOrder(selectedRef)
+      .then((d) => active && setDetail(d))
+      .catch((e) => active && setError(e.message));
+
+    // Route fail ho to map seedhi line dikhayega
+    getRoute(selectedRef)
+      .then((r) => active && setRoute(r))
+      .catch(() => active && setRoute(null));
+
+    return () => {
+      active = false;
+    };
   }, [selectedRef]);
 
   async function run(task) {
@@ -63,11 +89,10 @@ export default function App() {
       setBoard(await getBoard());
     });
 
-  const handleCreate = (payload) =>
+  const handleSimulate = () =>
     run(async () => {
-      const created = await createOrder(payload);
+      const created = await simulateOrder();
       setBoard(await getBoard());
-      setShowNew(false);
       setSelectedRef(created.orderRef);
     });
 
@@ -79,7 +104,6 @@ export default function App() {
     );
   }
 
-  // Dropdown ke liye unique rider names
   const riders = [...new Set(board.orders.map((o) => o.rider))].sort();
 
   return (
@@ -87,12 +111,11 @@ export default function App() {
       <Header board={board} />
 
       <div className="toolbar">
-        <button className="btn" onClick={() => setShowNew((v) => !v)}>
-          {showNew ? 'Cancel' : '+ New order'}
+        <button className="btn" onClick={handleSimulate} disabled={busy}>
+          {busy ? 'Working...' : 'Simulate incoming order'}
         </button>
       </div>
 
-      {showNew && <NewOrderForm onCreate={handleCreate} busy={busy} />}
       {error && <p className="banner">{error}</p>}
 
       <main className="grid">
@@ -103,6 +126,8 @@ export default function App() {
         />
         <RouteMap
           board={board}
+          weather={weather}
+          route={route}
           selectedRef={selectedRef}
           onSelect={setSelectedRef}
         />

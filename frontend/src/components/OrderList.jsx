@@ -3,7 +3,7 @@ import { fmt } from '../utils/time';
 
 const FILTERS = [
   { value: 'all', label: 'All' },
-  { value: 'high', label: 'High risk' },
+  { value: 'high', label: 'High' },
   { value: 'med', label: 'Moderate' },
   { value: 'low', label: 'Low' },
 ];

@@ -1,79 +1,146 @@
-const riderPosition = (hub, o) => {
-  const l1 = Math.abs(o.x - hub.x);
-  const l2 = Math.abs(o.y - hub.y);
-  const d = o.prog * (l1 + l2);
-  if (d <= l1) return { x: hub.x + Math.sign(o.x - hub.x) * d, y: hub.y };
-  return { x: o.x, y: hub.y + Math.sign(o.y - hub.y) * (d - l1) };
-};
+import { Fragment, useEffect, useRef } from 'react';
+import {
+  MapContainer,
+  TileLayer,
+  CircleMarker,
+  Polyline,
+  Circle,
+  Tooltip,
+  useMap,
+} from 'react-leaflet';
+import WeatherPanel from './WeatherPanel';
 
-const routePath = (hub, o) =>
-  `M${hub.x} ${hub.y} L${o.x} ${hub.y} L${o.x} ${o.y}`;
+const COLORS = { high: '#DC2626', med: '#B45309', low: '#15803D' };
+const RAIN = '#2563EB';
+const INK = '#111827';
 
-export default function RouteMap({ board, selectedRef, onSelect }) {
-  const { hub, canvas, orders, weather } = board;
+const lerp = (a, b, t) => ({
+  lat: a.lat + (b.lat - a.lat) * t,
+  lng: a.lng + (b.lng - a.lng) * t,
+});
+
+function FitOnce({ points }) {
+  const map = useMap();
+  const done = useRef(false);
+  useEffect(() => {
+    if (!done.current && points.length) {
+      map.fitBounds(points, { padding: [40, 40] });
+      done.current = true;
+    }
+  }, [map, points]);
+  return null;
+}
+
+export default function RouteMap({ board, weather, route, selectedRef, onSelect }) {
+  const { hub, orders } = board;
+  const hubPt = { lat: hub.lat, lng: hub.lng };
+  const fitPoints = [[hub.lat, hub.lng], ...orders.map((o) => [o.lat, o.lng])];
   const selected = orders.find((o) => o.orderRef === selectedRef);
+
+  // Sadak ka route agar mil gaya, warna seedhi line
+  const selectedPath = selected
+    ? route?.path?.length
+      ? route.path
+      : [[hub.lat, hub.lng], [selected.lat, selected.lng]]
+    : null;
 
   return (
     <section className="mapwrap">
-      <h2>Live routes</h2>
-      <div className="mapscroll">
-        <svg
-          className="map"
-          viewBox={`0 0 ${canvas.width} ${canvas.height}`}
-          role="img"
-          aria-label="Delivery routes from the central hub"
-        >
-          <rect className="land" width={canvas.width} height={canvas.height} />
+      <div className="map-head">
+        <h2>Live routes</h2>
+        {route && (
+          <span className="route-meta">
+            {route.distanceKm} km · about {route.durationMin} min by road
+          </span>
+        )}
+      </div>
 
-          <g>
-            <path className="road" d="M0 120 H600" />
-            <path className="road" d="M0 220 H600" />
-            <path className="road" d="M0 290 H600" />
-            <path className="road" d="M180 0 V340" />
-            <path className="road" d="M300 0 V350" />
-            <path className="road" d="M420 0 V350" />
-            <path className="road" d="M540 0 V330" />
-          </g>
-          <path className="water" d="M0 335 C120 355 220 395 330 377 C440 361 520 405 600 385 L600 420 L0 420 Z" />
-          <text className="sea" x="24" y="408">Arabian Sea</text>
+      <MapContainer
+        center={[hub.lat, hub.lng]}
+        zoom={12}
+        className="leaflet-map"
+        scrollWheelZoom={false}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          subdomains="abcd"
+          maxZoom={19}
+        />
+        <FitOnce points={fitPoints} />
 
-          {orders.map((o) => (
-            <path key={`r-${o.orderRef}`} className="route" d={routePath(hub, o)} />
+        {weather
+          .filter((w) => w.raining)
+          .map((w) => (
+            <Circle
+              key={w.area}
+              center={[w.lat, w.lng]}
+              radius={2500}
+              pathOptions={{ color: RAIN, fillColor: RAIN, fillOpacity: 0.12, weight: 1 }}
+            >
+              <Tooltip>{w.area}: {w.description}, {w.tempC} °C</Tooltip>
+            </Circle>
           ))}
 
-          {selected && (
-            <path
-              key={`sel-${selected.orderRef}`}
-              className={`route-sel ${selected.level}`}
-              d={routePath(hub, selected)}
-              pathLength={1}
+        {orders.map((o) =>
+          o.orderRef === selectedRef ? null : (
+            <Polyline
+              key={`r-${o.orderRef}`}
+              positions={[[hub.lat, hub.lng], [o.lat, o.lng]]}
+              pathOptions={{ color: '#9CA3AF', weight: 2, opacity: 0.5 }}
             />
-          )}
+          )
+        )}
 
-          {orders.map((o) => {
-            const on = o.orderRef === selectedRef;
-            const p = riderPosition(hub, o);
-            return (
-              <g key={o.orderRef} onClick={() => onSelect(o.orderRef)} style={{ cursor: 'pointer' }}>
-                <circle className={`pin ${o.level}`} cx={o.x} cy={o.y} r={on ? 12 : 9} />
-                <text className="lbl" x={o.x + 16} y={o.y + 4}>{o.area}</text>
-                <circle className="rider" cx={p.x} cy={p.y} r={on ? 6 : 4.5} />
-              </g>
-            );
-          })}
+        {selected && (
+          <Polyline
+            key={`sel-${selected.orderRef}-${route ? 'road' : 'line'}`}
+            positions={selectedPath}
+            pathOptions={{ color: COLORS[selected.level], weight: 5, opacity: 0.9 }}
+          />
+        )}
 
-          <rect className="hub" x={hub.x - 9} y={hub.y - 9} width="18" height="18" rx="3" />
-          <text className="lbl" x={hub.x + 16} y={hub.y - 6}>{hub.name}</text>
-        </svg>
-      </div>
+        {orders.map((o) => {
+          const on = o.orderRef === selectedRef;
+          const rider = lerp(hubPt, o, o.prog);
+          return (
+            <Fragment key={o.orderRef}>
+              <CircleMarker
+                center={[o.lat, o.lng]}
+                radius={on ? 12 : 9}
+                pathOptions={{ color: '#FFFFFF', weight: 2, fillColor: COLORS[o.level], fillOpacity: 1 }}
+                eventHandlers={{ click: () => onSelect(o.orderRef) }}
+              >
+                <Tooltip>{o.id} · {o.area} · {o.prob}% late risk</Tooltip>
+              </CircleMarker>
+
+              <CircleMarker
+                center={[rider.lat, rider.lng]}
+                radius={on ? 6 : 4.5}
+                pathOptions={{ color: '#FFFFFF', weight: 2, fillColor: INK, fillOpacity: 1 }}
+              />
+            </Fragment>
+          );
+        })}
+
+        <CircleMarker
+          center={[hub.lat, hub.lng]}
+          radius={8}
+          pathOptions={{ color: '#FFFFFF', weight: 2, fillColor: INK, fillOpacity: 1 }}
+        >
+          <Tooltip permanent direction="top">{hub.name}</Tooltip>
+        </CircleMarker>
+      </MapContainer>
 
       <div className="maplegend">
         <span><i className="dot high" />High risk</span>
         <span><i className="dot med" />Moderate</span>
         <span><i className="dot low" />Low</span>
         <span><i className="dot rider-dot" />Rider position</span>
+        <span><i className="dot rain-dot" />Rain</span>
       </div>
-      <p className="weather">{weather}</p>
+
+      <WeatherPanel weather={weather} />
     </section>
   );
 }

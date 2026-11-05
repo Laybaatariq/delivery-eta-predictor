@@ -20,17 +20,20 @@ export const pressAction = (ref, index) =>
 export const refreshPrediction = (ref) =>
   request(`/predictions/${ref}`, { method: 'POST' });
 
-export const askAssistant = (question, selectedRef) =>
-  request('/assistant/ask', {
-    method: 'POST',
-    body: JSON.stringify({ question, selectedRef }),
-  })
-
-export const createOrder = (body) =>
-  request('/orders', { method: 'POST', body: JSON.stringify(body) });
-
 export const reassignRider = (ref, riderName) =>
   request(`/orders/${ref}/reassign`, {
     method: 'POST',
     body: JSON.stringify({ riderName }),
   });
+
+export const simulateOrder = () => request('/orders/simulate', { method: 'POST' });
+
+export const askAssistant = (question, selectedRef) =>
+  request('/assistant/ask', {
+    method: 'POST',
+    body: JSON.stringify({ question, selectedRef }),
+  });
+
+export const getWeather = () => request('/weather');
+
+export const getRoute = (ref) => request(`/routes/${ref}`);

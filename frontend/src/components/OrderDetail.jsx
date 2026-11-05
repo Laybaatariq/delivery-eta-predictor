@@ -2,9 +2,10 @@ import { useState } from 'react';
 import EtaBar from './EtaBar';
 import WhyPanel from './WhyPanel';
 import AssistantChat from './AssistantChat';
+import ReassignRider from './ReassignRider';
 import { fmt, duration, LEVEL_WORD } from '../utils/time';
 
-export default function OrderDetail({ detail, busy, onAction, onRefresh }) {
+export default function OrderDetail({ detail, busy, riders, onAction, onRefresh, onReassign }) {
   const [tab, setTab] = useState('why');
 
   if (!detail) {
@@ -24,6 +25,13 @@ export default function OrderDetail({ detail, busy, onAction, onRefresh }) {
         Rider {detail.rider} has {detail.load} open orders. Cash on delivery {detail.amount}.
       </p>
 
+      <ReassignRider
+        currentRider={detail.rider}
+        riders={riders}
+        busy={busy}
+        onReassign={onReassign}
+      />
+
       <p className={`verdict ${detail.level}`}>
         {LEVEL_WORD[detail.level]} risk: {detail.prob}% chance this order is late
       </p>
@@ -35,7 +43,7 @@ export default function OrderDetail({ detail, busy, onAction, onRefresh }) {
       <EtaBar d={detail} />
 
       <button className="btn ghost" onClick={onRefresh} disabled={busy}>
-        {busy ? 'Refreshing...' : 'Refresh prediction'}
+        {busy ? 'Working...' : 'Refresh prediction'}
       </button>
 
       <div className="tabs" role="tablist">
