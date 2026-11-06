@@ -11,6 +11,7 @@ MODEL_VERSION = "heuristic-v0"
 eta_model = None
 delay_model = None
 
+# Trained models mil jayen to wo use hon, warna heuristic chale
 if (MODEL_DIR / "eta_regressor.joblib").exists() and (MODEL_DIR / "delay_classifier.joblib").exists():
     eta_model = joblib.load(MODEL_DIR / "eta_regressor.joblib")
     delay_model = joblib.load(MODEL_DIR / "delay_classifier.joblib")
@@ -40,7 +41,7 @@ class PredictResponse(BaseModel):
 
 
 def features(req: PredictRequest) -> np.ndarray:
-    # Order must match FEATURES in train.py
+    # Order train.py ke FEATURES jaisa hona chahiye
     return np.array([[
         req.distance_km,
         req.weight_kg,
@@ -53,7 +54,7 @@ def features(req: PredictRequest) -> np.ndarray:
 
 
 def heuristic(req: PredictRequest):
-    """Fallback used until the trained models exist."""
+    """Models na hon to ye simple formula use hota hai."""
     rush = 1.35 if req.hour_of_day in (8, 9, 17, 18, 19, 20) else 1.0
     load = 1 + 0.05 * req.rider_open_orders
     mid = req.distance_km * 4.0 * rush * load + 10

@@ -17,9 +17,14 @@ AREAS = {
     "Nazimabad": 1.10, "Malir": 1.35,
 }
 
+FEATURES = [
+    "distance_km", "weight_kg", "rider_open_orders",
+    "is_cod", "hour_of_day", "day_of_week", "promised_minutes_from_now",
+]
+
 
 def generate(n: int) -> pd.DataFrame:
-    """Synthetic orders. Travel time depends on distance, rush hour, rider load and area."""
+    """Synthetic orders. Travel time depends on distance, rush hour, rider load, area and rain."""
     area = RNG.choice(list(AREAS), size=n)
     area_factor = np.array([AREAS[a] for a in area])
     distance = RNG.uniform(1, 15, n)
@@ -53,12 +58,6 @@ def generate(n: int) -> pd.DataFrame:
     })
 
 
-FEATURES = [
-    "distance_km", "weight_kg", "rider_open_orders",
-    "is_cod", "hour_of_day", "day_of_week", "promised_minutes_from_now",
-]
-
-
 def main():
     df = generate(N)
     X = df[FEATURES]
@@ -70,7 +69,9 @@ def main():
     eta.fit(train_X, train_t)
     eta_mae = mean_absolute_error(test_t, eta.predict(test_X))
 
-    delay = XGBClassifier(n_estimators=300, max_depth=4, learning_rate=0.05, subsample=0.9, eval_metric="logloss")
+    delay = XGBClassifier(
+        n_estimators=300, max_depth=4, learning_rate=0.05, subsample=0.9, eval_metric="logloss"
+    )
     delay.fit(train_X, train_y)
     delay_auc = roc_auc_score(test_y, delay.predict_proba(test_X)[:, 1])
 
