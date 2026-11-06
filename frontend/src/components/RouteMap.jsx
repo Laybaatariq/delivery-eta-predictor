@@ -10,6 +10,9 @@ import {
 } from 'react-leaflet';
 import WeatherPanel from './WeatherPanel';
 
+// Vite env: frontend/.env.local mein VITE_MAPTILER_KEY set ho to MapTiler use hoga
+const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY;
+
 const COLORS = { high: '#DC2626', med: '#B45309', low: '#15803D' };
 const RAIN = '#2563EB';
 const INK = '#111827';
@@ -29,6 +32,25 @@ function FitOnce({ points }) {
     }
   }, [map, points]);
   return null;
+}
+
+function BaseMap() {
+  if (MAPTILER_KEY) {
+    return (
+      <TileLayer
+        attribution='&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        url={`https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=${MAPTILER_KEY}`}
+        maxZoom={19}
+      />
+    );
+  }
+  return (
+    <TileLayer
+      attribution='Tiles &copy; Esri'
+      url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
+      maxZoom={19}
+    />
+  );
 }
 
 export default function RouteMap({ board, weather, route, selectedRef, onSelect }) {
@@ -61,12 +83,7 @@ export default function RouteMap({ board, weather, route, selectedRef, onSelect 
         className="leaflet-map"
         scrollWheelZoom={false}
       >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-          subdomains="abcd"
-          maxZoom={19}
-        />
+        <BaseMap />
         <FitOnce points={fitPoints} />
 
         {weather
