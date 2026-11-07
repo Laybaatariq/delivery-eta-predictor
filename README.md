@@ -39,7 +39,7 @@ This project gives dispatchers early warning:
 
 ![Map with road route](docs/map-routes.png)
 
-![Simulated order and reassignment](docs/simulate-reassign.png)
+![Simulated order and reassignment](docs/stimulate-reassign.png)
 
 ## Architecture
 
